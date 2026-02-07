@@ -185,49 +185,18 @@ export default function CoachChat() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4">
-        {/* In voice mode, show minimal UI. Otherwise show all messages */}
-        {voiceEnabled ? (
-          <>
-            {/* Show user messages */}
-            {messages.filter(m => m.role === 'user').map((message, index) => (
-              <MessageBubble
-                key={index}
-                content={message.content}
-                isUser={true}
-                mode={mode}
-              />
-            ))}
-          </>
-        ) : (
-          messages.map((message, index) => (
-            <MessageBubble
-              key={index}
-              content={message.content}
-              isUser={message.role === 'user'}
-              mode={mode}
-            />
-          ))
-        )}
+        {/* Show all messages in both modes */}
+        {messages.map((message, index) => (
+          <MessageBubble
+            key={index}
+            content={message.content}
+            isUser={message.role === 'user'}
+            mode={mode}
+          />
+        ))}
 
-        {/* Voice mode: Thinking indicator */}
-        {voiceEnabled && (isLoading || isPreparingAudio) && (
-          <div className="flex flex-col items-center justify-center py-8 animate-slide-in-left">
-            <div className="mb-4">
-              <Mascot mode={mode} size={80} />
-            </div>
-            <div className={`text-sm font-medium ${mode === 'hype' ? 'text-teal-600' : 'text-purple-600'}`}>
-              Coach Fabian is thinking...
-            </div>
-            <div className="flex gap-1 mt-2">
-              <span className={`w-2 h-2 rounded-full animate-bounce ${mode === 'hype' ? 'bg-teal-400' : 'bg-purple-400'}`} />
-              <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:0.1s] ${mode === 'hype' ? 'bg-teal-400' : 'bg-purple-400'}`} />
-              <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:0.2s] ${mode === 'hype' ? 'bg-teal-400' : 'bg-purple-400'}`} />
-            </div>
-          </div>
-        )}
-
-        {/* Non-voice mode loading indicator */}
-        {isLoading && !voiceEnabled && (
+        {/* Loading indicator */}
+        {isLoading && (
           <div className="flex justify-start mb-3 animate-slide-in-left">
             <div className={`px-4 py-3 rounded-2xl rounded-bl-md ${mode === 'hype' ? 'bg-teal-100' : 'bg-blue-100'}`}>
               <div className="flex gap-1">
@@ -238,6 +207,14 @@ export default function CoachChat() {
             </div>
           </div>
         )}
+
+        {/* Voice mode: preparing audio indicator */}
+        {voiceEnabled && isPreparingAudio && (
+          <div className={`text-center text-xs py-2 ${mode === 'hype' ? 'text-teal-600' : 'text-purple-600'}`}>
+            Preparing audio...
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
