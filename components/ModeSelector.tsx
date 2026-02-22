@@ -1,10 +1,10 @@
 'use client'
 
-import { CoachMode } from '@/lib/prompts'
+import { ChatMode } from '@/lib/prompts'
 
 interface ModeSelectorProps {
-  mode: CoachMode
-  onModeChange: (mode: CoachMode) => void
+  mode: ChatMode
+  onModeChange: (mode: ChatMode) => void
 }
 
 export default function ModeSelector({ mode, onModeChange }: ModeSelectorProps) {

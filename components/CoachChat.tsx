@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { CoachMode } from '@/lib/prompts'
+import { ChatMode } from '@/lib/prompts'
 import ModeSelector from './ModeSelector'
 import MessageBubble from './MessageBubble'
 import VoiceButton, { VoiceButtonRef } from './VoiceButton'
@@ -12,19 +12,19 @@ interface Message {
   content: string
 }
 
-const welcomeMessages: Record<CoachMode, string> = {
+const welcomeMessages: Record<ChatMode, string> = {
   hype: "Hey champion! 💪 Ready to crush it today? Tell me about your game coming up!",
   calm: "Hey there. 😌 I'm here to help you feel calm and focused. What's going on?",
 }
 
-const quickReplies: Record<CoachMode, string[]> = {
+const quickReplies: Record<ChatMode, string[]> = {
   hype: ["I'm ready to win! 💪", "Pump me up!", "I need motivation"],
   calm: ["I'm nervous 😰", "Help me focus", "I need to breathe"],
 }
 
 
 export default function CoachChat() {
-  const [mode, setMode] = useState<CoachMode>('hype')
+  const [mode, setMode] = useState<ChatMode>('hype')
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: welcomeMessages.hype },
   ])
@@ -51,7 +51,7 @@ export default function CoachChat() {
   }, [messages])
 
   // Reset chat when mode changes
-  const handleModeChange = (newMode: CoachMode) => {
+  const handleModeChange = (newMode: ChatMode) => {
     setMode(newMode)
     setMessages([{ role: 'assistant', content: welcomeMessages[newMode] }])
     // Stop any playing audio

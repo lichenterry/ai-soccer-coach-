@@ -1,11 +1,11 @@
 'use client'
 
-import { CoachMode } from '@/lib/prompts'
+import { ChatMode } from '@/lib/prompts'
 
 interface MessageBubbleProps {
   content: string
   isUser: boolean
-  mode?: CoachMode
+  mode?: ChatMode
 }
 
 export default function MessageBubble({ content, isUser, mode = 'hype' }: MessageBubbleProps) {

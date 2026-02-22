@@ -24,26 +24,36 @@ export default function Home() {
         <div className="text-6xl mb-4 animate-bounce">⚽</div>
         <h1 className="text-4xl font-bold mb-4">AI Soccer Coach</h1>
         <p className="text-lg mb-8 text-green-100">
-          Your personal coach to hype you up or calm your nerves before the big game!
+          Your personal coach to help you play your best!
         </p>
 
-        <Link
-          href="/coach"
-          className="inline-block bg-white text-green-600 font-bold py-4 px-8 rounded-full text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all"
-        >
-          Start Coaching Session 🚀
-        </Link>
+        <div className="flex flex-col gap-4">
+          <Link
+            href="/coach"
+            className="bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-4 px-8 rounded-full text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+          >
+            Pre-Game Coach
+          </Link>
+          <Link
+            href="/analyze"
+            className="bg-white text-purple-600 font-bold py-4 px-8 rounded-full text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+          >
+            Analyze My Game
+          </Link>
+        </div>
 
-        <div className="mt-12 grid grid-cols-2 gap-6 text-center">
-          <div className="bg-white/10 rounded-xl p-4 hover:bg-white/20 transition-colors cursor-default">
-            <div className="text-3xl mb-2">🔥</div>
-            <h3 className="font-semibold">Hype Mode</h3>
-            <p className="text-sm text-green-100">Get pumped up!</p>
+        <div className="mt-10 grid grid-cols-3 gap-4 text-center">
+          <div className="bg-orange-400/90 rounded-xl p-3 hover:scale-105 transition-all cursor-default shadow">
+            <div className="text-2xl mb-1">🔥</div>
+            <p className="text-xs font-medium text-white">Get hyped</p>
           </div>
-          <div className="bg-white/10 rounded-xl p-4 hover:bg-white/20 transition-colors cursor-default">
-            <div className="text-3xl mb-2">😌</div>
-            <h3 className="font-semibold">Calm Mode</h3>
-            <p className="text-sm text-green-100">Find your focus</p>
+          <div className="bg-blue-400/90 rounded-xl p-3 hover:scale-105 transition-all cursor-default shadow">
+            <div className="text-2xl mb-1">😌</div>
+            <p className="text-xs font-medium text-white">Stay calm</p>
+          </div>
+          <div className="bg-purple-400/90 rounded-xl p-3 hover:scale-105 transition-all cursor-default shadow">
+            <div className="text-2xl mb-1">🎬</div>
+            <p className="text-xs font-medium text-white">Video feedback</p>
           </div>
         </div>
       </div>

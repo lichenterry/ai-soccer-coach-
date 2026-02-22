@@ -1,9 +1,9 @@
 'use client'
 
-import { CoachMode } from '@/lib/prompts'
+import { ChatMode } from '@/lib/prompts'
 
 interface MascotProps {
-  mode: CoachMode
+  mode: ChatMode
   size?: number
 }
 
