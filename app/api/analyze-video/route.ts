@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { systemPrompts } from '@/lib/prompts'
 
+// Increase body size limit for video frames (App Router)
+export const maxDuration = 60 // seconds
+export const dynamic = 'force-dynamic'
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
@@ -84,7 +88,56 @@ If you can't clearly identify the player, do your best based on the description 
 
     const textBlock = response.content[0]
     if (textBlock.type === 'text') {
-      return NextResponse.json({ analysis: textBlock.text })
+      const analysis = textBlock.text
+
+      // Safety check with LLM-as-judge
+      const safetyCheck = await anthropic.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 100,
+        messages: [
+          {
+            role: 'user',
+            content: `You are a safety checker for youth sports coaching feedback.
+
+Is this feedback appropriate for a 10-14 year old athlete?
+
+Flag as FAIL if the feedback contains:
+- Harsh or discouraging language
+- Personal criticism (vs constructive feedback)
+- Inappropriate content
+- Overly negative tone
+
+Feedback to check:
+"${analysis}"
+
+Reply with exactly: PASS or FAIL: [one-line reason]`,
+          },
+        ],
+      })
+
+      const safetyResult = safetyCheck.content[0]
+      if (safetyResult.type === 'text') {
+        const isSafe = safetyResult.text.trim().toUpperCase().startsWith('PASS')
+
+        if (!isSafe) {
+          console.warn('Safety check failed:', safetyResult.text)
+          // Return a safe fallback response
+          return NextResponse.json({
+            analysis: `🌟 WHAT YOU DID GREAT
+• Great effort getting out there and playing!
+• Keep working hard and having fun
+
+📈 ONE THING TO WORK ON
+• Keep practicing and watching the game closely
+
+⚽ TRY THIS DRILL
+• Practice passing with a friend or against a wall for 10 minutes a day`,
+            safetyFlagged: true,
+          })
+        }
+      }
+
+      return NextResponse.json({ analysis })
     }
 
     return NextResponse.json(

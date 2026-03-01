@@ -20,6 +20,7 @@ export default function AnalyzePage() {
   const [analysis, setAnalysis] = useState<string | null>(null)
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
+  const [isLongVideo, setIsLongVideo] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -33,6 +34,7 @@ export default function AnalyzePage() {
 
     setError(null)
     setWarning(null)
+    setIsLongVideo(false)
 
     const validation = validateVideoFile(file)
     if (!validation.valid) {
@@ -44,6 +46,17 @@ export default function AnalyzePage() {
     if (sizeWarning) {
       setWarning(sizeWarning)
     }
+
+    // Check video duration
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.onloadedmetadata = () => {
+      if (video.duration > 60) {
+        setIsLongVideo(true)
+      }
+      URL.revokeObjectURL(video.src)
+    }
+    video.src = URL.createObjectURL(file)
 
     setSelectedFile(file)
     setStage('details')
@@ -58,7 +71,7 @@ export default function AnalyzePage() {
 
     try {
       setProgress('Loading video...')
-      const frames = await extractFrames(selectedFile, 6, (stageText, pct) => {
+      const frames = await extractFrames(selectedFile, 30, (stageText, pct) => {
         setProgress(`${stageText} ${pct}%`)
       })
 
@@ -139,6 +152,7 @@ export default function AnalyzePage() {
     setAnalysis(null)
     setError(null)
     setWarning(null)
+    setIsLongVideo(false)
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current = null
@@ -169,7 +183,7 @@ export default function AnalyzePage() {
               <div className="text-5xl mb-4">🎬</div>
               <h2 className="text-xl font-bold text-gray-800 mb-2">Upload Your Game Video</h2>
               <p className="text-gray-600 mb-6 text-sm">
-                Upload a clip from your game and Coach Fabian will give you feedback!
+                For best results, upload a <strong>15-30 second clip</strong> of a specific play you want feedback on.
               </p>
 
               <input
@@ -203,6 +217,12 @@ export default function AnalyzePage() {
           {stage === 'details' && (
             <div className="bg-white rounded-2xl p-6 shadow-xl">
               <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">Help Me Find You</h2>
+
+              {isLongVideo && (
+                <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">
+                  📹 This video is over 1 minute. Coach Fabian works best with short clips focused on one play. You can still continue, but consider trimming next time!
+                </div>
+              )}
 
               {warning && (
                 <div className="mb-4 p-3 bg-amber-50 text-amber-700 rounded-lg text-sm">
