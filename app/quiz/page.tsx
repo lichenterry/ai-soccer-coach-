@@ -55,7 +55,7 @@ export default function QuizPage() {
     if (navigator.share) {
       try {
         await navigator.share({ title: 'College Soccer Recruitment Readiness Quiz', text, url })
-      } catch (e) {
+      } catch {
         // User cancelled or error
       }
     } else {
@@ -227,7 +227,7 @@ export default function QuizPage() {
                 {/* Question 3: GPA */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    What's their GPA?
+                    What is their GPA?
                   </label>
                   <div className="grid grid-cols-4 gap-2">
                     {[
@@ -339,7 +339,7 @@ export default function QuizPage() {
                 {/* Question 7: Goal */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    What's the goal?
+                    What is the goal?
                   </label>
                   <div className="grid grid-cols-4 gap-2">
                     {[
