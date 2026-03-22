@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } fro
 interface VoiceButtonProps {
   onTranscript: (text: string) => void
   disabled?: boolean
-  mode?: 'hype' | 'calm'
+  mode?: 'hype' | 'calm' | 'recruit'
 }
 
 export interface VoiceButtonRef {

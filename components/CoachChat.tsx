@@ -15,11 +15,13 @@ interface Message {
 const welcomeMessages: Record<ChatMode, string> = {
   hype: "Hey champion! 💪 Ready to crush it today? Tell me about your game coming up!",
   calm: "Hey there. 😌 I'm here to help you feel calm and focused. What's going on?",
+  recruit: "Hey! 🎓 Ready to learn about college soccer recruitment? Ask me anything!",
 }
 
 const quickReplies: Record<ChatMode, string[]> = {
   hype: ["I'm ready to win! 💪", "Pump me up!", "I need motivation"],
   calm: ["I'm nervous 😰", "Help me focus", "I need to breathe"],
+  recruit: ["Tell me about scholarships", "When do coaches recruit?", "What is JUCO?"],
 }
 
 
