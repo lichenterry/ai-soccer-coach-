@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "eval": "npx tsx evals/run-eval.ts",
+    "eval:ci": "API_URL=https://ai-soccer-coach.vercel.app/api/chat npx tsx evals/run-eval.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",

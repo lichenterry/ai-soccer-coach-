@@ -40,9 +40,15 @@ export default function Home() {
           >
             Analyze My Game
           </Link>
+          <Link
+            href="/quiz"
+            className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-4 px-8 rounded-full text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+          >
+            🎓 College Recruitment
+          </Link>
         </div>
 
-        <div className="mt-10 grid grid-cols-3 gap-4 text-center">
+        <div className="mt-10 grid grid-cols-4 gap-3 text-center">
           <div className="bg-orange-400/90 rounded-xl p-3 hover:scale-105 transition-all cursor-default shadow">
             <div className="text-2xl mb-1">🔥</div>
             <p className="text-xs font-medium text-white">Get hyped</p>
@@ -53,7 +59,11 @@ export default function Home() {
           </div>
           <div className="bg-purple-400/90 rounded-xl p-3 hover:scale-105 transition-all cursor-default shadow">
             <div className="text-2xl mb-1">🎬</div>
-            <p className="text-xs font-medium text-white">Video feedback</p>
+            <p className="text-xs font-medium text-white">Video tips</p>
+          </div>
+          <div className="bg-emerald-400/90 rounded-xl p-3 hover:scale-105 transition-all cursor-default shadow">
+            <div className="text-2xl mb-1">🎓</div>
+            <p className="text-xs font-medium text-white">College prep</p>
           </div>
         </div>
       </div>

@@ -14,9 +14,12 @@ export async function getCoachResponse(
   messages: Message[],
   mode: CoachMode
 ): Promise<string> {
+  // Recruit mode needs more tokens for detailed explanations
+  const maxTokens = mode === 'recruit' ? 500 : 150
+
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 150,
+    max_tokens: maxTokens,
     system: systemPrompts[mode],
     messages: messages.map((m) => ({
       role: m.role,
