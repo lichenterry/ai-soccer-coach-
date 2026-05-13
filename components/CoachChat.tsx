@@ -35,6 +35,7 @@ export default function CoachChat() {
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [isPreparingAudio, setIsPreparingAudio] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const voiceButtonRef = useRef<VoiceButtonRef>(null)
@@ -63,51 +64,66 @@ export default function CoachChat() {
     }
   }
 
-  // Play text as speech
-  const playAudio = useCallback(async (text: string) => {
-    try {
-      setIsPreparingAudio(true)
-      const response = await fetch('/api/speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      })
-
-      if (!response.ok) {
-        console.error('Failed to get speech')
-        setIsPreparingAudio(false)
-        return
-      }
-
-      const audioBlob = await response.blob()
-      const audioUrl = URL.createObjectURL(audioBlob)
-      const audio = new Audio(audioUrl)
-      audioRef.current = audio
-
-      setIsPreparingAudio(false)
-      setIsPlayingAudio(true)
-
-      audio.onended = () => {
-        setIsPlayingAudio(false)
-        URL.revokeObjectURL(audioUrl)
-        // Auto-listen after coach finishes speaking
-        setTimeout(() => {
-          voiceButtonRef.current?.startListening()
-        }, 500)
-      }
-
-      audio.onerror = () => {
-        setIsPlayingAudio(false)
-        URL.revokeObjectURL(audioUrl)
-      }
-
-      await audio.play()
-    } catch (error) {
-      console.error('Audio playback error:', error)
-      setIsPreparingAudio(false)
-      setIsPlayingAudio(false)
-    }
+  // On any TTS failure, surface a visible message and flip voice mode off so
+  // the user knows why the coach went quiet (most common cause: OpenAI quota).
+  const failVoice = useCallback((status?: number) => {
+    const message =
+      status === 429
+        ? 'Voice is rate-limited or out of credits — voice mode turned off.'
+        : 'Voice playback failed — voice mode turned off.'
+    setVoiceError(message)
+    setVoiceEnabled(false)
+    setIsPreparingAudio(false)
+    setIsPlayingAudio(false)
   }, [])
+
+  // Play text as speech
+  const playAudio = useCallback(
+    async (text: string) => {
+      try {
+        setIsPreparingAudio(true)
+        const response = await fetch('/api/speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        })
+
+        if (!response.ok) {
+          console.error('Failed to get speech', response.status)
+          failVoice(response.status)
+          return
+        }
+
+        const audioBlob = await response.blob()
+        const audioUrl = URL.createObjectURL(audioBlob)
+        const audio = new Audio(audioUrl)
+        audioRef.current = audio
+
+        setIsPreparingAudio(false)
+        setIsPlayingAudio(true)
+
+        audio.onended = () => {
+          setIsPlayingAudio(false)
+          URL.revokeObjectURL(audioUrl)
+          // Auto-listen after coach finishes speaking
+          setTimeout(() => {
+            voiceButtonRef.current?.startListening()
+          }, 500)
+        }
+
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl)
+          failVoice()
+        }
+
+        await audio.play()
+      } catch (error) {
+        console.error('Audio playback error:', error)
+        failVoice()
+      }
+    },
+    [failVoice],
+  )
 
   const sendMessage = async (messageText?: string) => {
     const userMessage = (messageText || input).trim()
@@ -217,6 +233,15 @@ export default function CoachChat() {
           </div>
         )}
 
+        {voiceError && (
+          <div
+            role="status"
+            className="mx-auto mb-2 w-fit rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700"
+          >
+            {voiceError}
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -246,7 +271,10 @@ export default function CoachChat() {
         {/* Voice toggle */}
         <div className="flex items-center justify-center gap-2 mb-3">
           <button
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
+            onClick={() => {
+              if (!voiceEnabled) setVoiceError(null)
+              setVoiceEnabled(!voiceEnabled)
+            }}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
               voiceEnabled
                 ? mode === 'hype'

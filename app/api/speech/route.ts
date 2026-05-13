@@ -29,7 +29,10 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const error = await response.text()
       console.error('OpenAI TTS error:', error)
-      return NextResponse.json({ error: 'Failed to generate speech' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Failed to generate speech' },
+        { status: response.status },
+      )
     }
 
     // Return the audio as a blob
