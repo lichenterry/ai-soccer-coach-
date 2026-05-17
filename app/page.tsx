@@ -60,78 +60,73 @@ export default function Home() {
           <BrandMark />
         </div>
 
-        {/* === Animated soccer ball hero ================================== */}
-        {/* Glow halo + ground shadow + the rotating bobbing ball itself. */}
-        <div className="relative mt-6 flex h-[170px] flex-shrink-0 items-center justify-center">
-          <div
-            aria-hidden="true"
-            className="pitch-ball-glow pointer-events-none absolute left-1/2 top-1/2 h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 animate-glow-pulse"
-            style={{ filter: 'blur(10px)' }}
-          />
-          <div
-            aria-hidden="true"
-            className="pitch-ball-shadow pointer-events-none absolute bottom-2 left-1/2 h-4 w-[100px] -translate-x-1/2 animate-shadow-breathe"
-            style={{ filter: 'blur(10px)' }}
-          />
-          <div
-            aria-hidden="true"
-            className="pitch-ball relative z-[1] h-[100px] w-[100px] animate-ball-combo"
-          />
+        {/* === Centered cluster: ball + headline ========================== */}
+        {/* Wrapped in flex-1 + justify-center so on tall phones (iPhone 14
+            Pro and up) the headline sits closer to the visual centre of
+            the screen instead of crowding the top. */}
+        <div className="flex flex-1 flex-col justify-center">
+          {/* Animated soccer ball hero — glow halo + ground shadow + the
+              rotating bobbing ball itself. */}
+          <div className="relative flex h-[170px] flex-shrink-0 items-center justify-center">
+            <div
+              aria-hidden="true"
+              className="pitch-ball-glow pointer-events-none absolute left-1/2 top-1/2 h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 animate-glow-pulse"
+              style={{ filter: 'blur(10px)' }}
+            />
+            <div
+              aria-hidden="true"
+              className="pitch-ball-shadow pointer-events-none absolute bottom-2 left-1/2 h-4 w-[100px] -translate-x-1/2 animate-shadow-breathe"
+              style={{ filter: 'blur(10px)' }}
+            />
+            <div
+              aria-hidden="true"
+              className="pitch-ball relative z-[1] h-[100px] w-[100px] animate-ball-combo"
+            />
+          </div>
+
+          {/* Headline + subhead */}
+          <div className="px-[6px] pt-[6px]">
+            <h1
+              className="mb-[6px] text-[28px] font-black leading-[1.04] text-white"
+              style={{ letterSpacing: '-1.2px' }}
+            >
+              Their best
+              <br />
+              game starts
+              <br />
+              here.
+            </h1>
+            <p className="text-[12.5px] font-medium leading-[1.5] text-white/[0.55]">
+              An AI coach in your young athlete&rsquo;s pocket — for nerves,
+              hype, and game film review.
+            </p>
+          </div>
         </div>
 
-        {/* === Headline + subhead ========================================= */}
-        <div className="px-[6px] pb-4 pt-[6px]">
-          <h1
-            className="mb-[6px] text-[28px] font-black leading-[1.04] text-white"
-            style={{ letterSpacing: '-1.2px' }}
-          >
-            Their best
-            <br />
-            game starts
-            <br />
-            here.
-          </h1>
-          <p className="text-[12.5px] font-medium leading-[1.5] text-white/[0.55]">
-            An AI coach in your young athlete&rsquo;s pocket — for nerves,
-            hype, and game film review.
-          </p>
-        </div>
-
-        {/* === Chips + footer (pinned to bottom of the stage) ============= */}
-        <div className="mt-auto flex flex-col">
-          <div className="flex flex-col gap-[9px]">
-            {ordered.map((feature) => {
-              // Recruit chip also gets its progress sub-copy when it's NOT
-              // the smart pick — a parent with a half-finished quiz should
-              // see "Step 4 of 7" even if their last action was Analyze.
-              // For other features we only override on the smart pick.
-              let sub: string | undefined
-              if (feature === smart) {
-                sub = recruit ? smartSubCopy(feature, recruit) : undefined
-              } else if (feature === 'recruit' && recruit) {
-                sub = progressLabel(recruit)
-              }
-              return (
-                <FeatureChip
-                  key={feature}
-                  feature={feature}
-                  smart={feature === smart}
-                  subCopy={sub}
-                />
-              )
-            })}
-          </div>
-          <div className="mt-[14px] text-center text-[11px] font-semibold text-white/40">
-            {/* Privacy / Terms routes don't exist yet — placeholders so the
-                footer matches the locked v7 layout. */}
-            <a href="#privacy" className="hover:text-white/60">
-              Privacy
-            </a>
-            <span className="mx-[6px] text-white/20">|</span>
-            <a href="#terms" className="hover:text-white/60">
-              Terms
-            </a>
-          </div>
+        {/* === Chips (pinned to bottom of the stage) ====================== */}
+        {/* Privacy / Terms footer removed — we don't have those pages yet
+            and the placeholder links added noise. */}
+        <div className="flex flex-col gap-[9px]">
+          {ordered.map((feature) => {
+            // Recruit chip also gets its progress sub-copy when it's NOT
+            // the smart pick — a parent with a half-finished quiz should
+            // see "Step 4 of 7" even if their last action was Analyze.
+            // For other features we only override on the smart pick.
+            let sub: string | undefined
+            if (feature === smart) {
+              sub = recruit ? smartSubCopy(feature, recruit) : undefined
+            } else if (feature === 'recruit' && recruit) {
+              sub = progressLabel(recruit)
+            }
+            return (
+              <FeatureChip
+                key={feature}
+                feature={feature}
+                smart={feature === smart}
+                subCopy={sub}
+              />
+            )
+          })}
         </div>
       </div>
     </Stage>
