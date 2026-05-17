@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import CoachChat from '@/components/CoachChat'
 import {
@@ -13,34 +13,64 @@ import { summariseAnswers } from '@/lib/recruitResults'
 /**
  * Recruit Prep chat handoff.
  *
- * Re-uses the existing Coach Fabian chat with three small tweaks:
- *   - forcedMode='recruit' → hides Hype/Calm toggle, swaps in a mint badge
- *   - lastUsedFeature='recruit' → engagement signal for the home chip
- *   - contextBanner → mint-tinted summary of the parent's quiz answers,
- *     OR (if the quiz hasn't been taken) a soft nudge back to /recruit
+ * Two layers of staleness protection:
  *
- * The context banner is UI-only — we do NOT inject quiz answers into the
- * LLM system prompt yet. That's a deliberate follow-up (per brief) since
- * it needs prompt-engineering work. The banner is a visible reminder to
- * the parent that they have context Coach can speak to.
+ *   1. The banner re-reads progress on `storage` events (another tab edited
+ *      localStorage) and on `pageshow` events (the page was restored from
+ *      the browser's back/forward cache without remounting). Without these,
+ *      a parent who retakes the quiz in another tab would see the old
+ *      summary until they refresh.
+ *
+ *   2. The quiz answers sent to the LLM are NOT taken from React state.
+ *      CoachChat's `getQuizContext` getter calls `getRecruitProgress()` at
+ *      the moment a message is sent, so the model always sees the current
+ *      localStorage value — even mid-conversation if the parent edits
+ *      answers in another tab.
+ *
+ * The context banner is then mirrored to the model via the recruit system
+ * prompt — see lib/recruitContext.ts and app/api/chat/route.ts.
  */
 export default function RecruitChatPage() {
-  // Banner contents depend on localStorage, so we render the chat without
-  // a banner on first render and pop the banner in once we've hydrated.
-  // Keeps SSR markup stable.
+  // `null` while we haven't read localStorage yet — keeps SSR markup stable
+  // and prevents a flash of either banner state.
   const [progress, setProgress] = useState<RecruitProgress | null>(null)
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     setProgress(getRecruitProgress())
   }, [])
+
+  useEffect(() => {
+    refresh()
+
+    // Another tab wrote to localStorage — sync our banner.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || e.key === 'pitch.recruitProgress') {
+        refresh()
+      }
+    }
+    // Browser restored this page from bfcache without re-mounting. The
+    // `persisted` flag is true when bfcache was actually used.
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) refresh()
+    }
+
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('pageshow', onPageShow)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('pageshow', onPageShow)
+    }
+  }, [refresh])
+
+  // The model gets the same fresh-read treatment. Read at send time, not
+  // from state — see CoachChat for where this getter is called.
+  const getQuizContext = useCallback(() => getRecruitProgress().answers, [])
 
   const banner = (() => {
     if (!progress) return undefined
     if (isComplete(progress.answers)) {
       return <CompletedBanner summary={summariseAnswers(progress.answers)} />
     }
-    // Soft nudge — kept gentle so a parent who really just wants to chat
-    // isn't blocked. Tapping "Take it" jumps back to the readiness check.
     return <NudgeBanner />
   })()
 
@@ -62,14 +92,12 @@ export default function RecruitChatPage() {
         'Highlight video tips',
       ]}
       contextBanner={banner}
+      getQuizContext={getQuizContext}
     />
   )
 }
 
 function CompletedBanner({ summary }: { summary: string }) {
-  // Quoted summary like v15: "I've seen your readiness check — your athlete
-  // is a 10th grade ECNL Forward with a 3.5+ GPA. What do you want to dig
-  // into?"
   return (
     <div
       className="rounded-2xl border border-pitch-mint-300/[0.22] px-3 py-[10px] text-[11px] font-medium leading-[1.5] text-white/[0.78]"

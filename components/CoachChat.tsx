@@ -14,6 +14,7 @@ import ModeToggle from './ModeToggle'
 import MessageBubble from './MessageBubble'
 import VoiceButton, { VoiceButtonRef } from './VoiceButton'
 import { setLastUsed, type Feature } from '@/lib/lastUsed'
+import type { QuizAnswers } from '@/lib/recruitProgress'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -23,8 +24,8 @@ interface Message {
 interface CoachChatProps {
   /**
    * When set, the chat is locked to this mode and the Hype/Calm toggle is
-   * replaced by a small mode badge. Used by /recruit/chat so the recruit
-   * deep-dive doesn't surface the pre-game-only toggle.
+   * hidden. Used by /recruit/chat so the recruit deep-dive doesn't surface
+   * the pre-game-only toggle.
    */
   forcedMode?: ChatMode
   /** Override the default welcome message. */
@@ -39,6 +40,13 @@ interface CoachChatProps {
   lastUsedFeature?: Feature
   /** Status copy shown under the coach name. Defaults 'Ready when you are'. */
   statusLabel?: string
+  /**
+   * Optional getter for recruit quiz answers. Called at SEND time (not at
+   * mount) so the values are always fresh — picks up cross-tab retakes,
+   * bfcache restores, and in-flow edits without a remount. Return null
+   * when there's nothing to send.
+   */
+  getQuizContext?: () => QuizAnswers | null
 }
 
 // Coach Fabian uses **bold** for inline emphasis — MessageBubble renders it.
@@ -60,12 +68,6 @@ const DEFAULT_QUICK_REPLIES: Record<ChatMode, string[]> = {
   ],
 }
 
-const MODE_BADGE: Record<ChatMode, { emoji: string; label: string }> = {
-  hype: { emoji: '🔥', label: 'Hype' },
-  calm: { emoji: '😌', label: 'Calm' },
-  recruit: { emoji: '🎓', label: 'Recruit' },
-}
-
 export default function CoachChat({
   forcedMode,
   welcomeOverride,
@@ -74,6 +76,7 @@ export default function CoachChat({
   backHref = '/',
   lastUsedFeature = 'pre-game',
   statusLabel,
+  getQuizContext,
 }: CoachChatProps = {}) {
   // When forcedMode is set the toggle is hidden and the state can't change.
   // Otherwise the chat defaults to Hype (the Pre-Game Coach surface).
@@ -185,11 +188,16 @@ export default function CoachChat({
     setMessages(newMessages)
     setIsLoading(true)
 
+    // Read the context fresh on every send rather than from a snapshot —
+    // this way a parent who retakes the quiz in another tab (or via
+    // back/forward) gets up-to-date personalisation on the next message.
+    const quizContext = getQuizContext ? getQuizContext() : null
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages, mode }),
+        body: JSON.stringify({ messages: newMessages, mode, quizContext }),
       })
 
       const data = await response.json()
@@ -275,52 +283,38 @@ export default function CoachChat({
               </div>
             </div>
 
-            {/* When mode is forced (recruit), show the mode badge in place
-                of the voice toggle so the recruit header reads "Coach
-                Fabian · Recruit" without losing the affordance. Voice
-                toggle moves to the lower-right corner of the input bar in
-                that mode (or we can move it later). For now we keep voice
-                toggle visible only on the toggleable chat. */}
-            {forcedMode ? (
-              <span
-                className="flex flex-shrink-0 items-center gap-1 rounded-full border border-pitch-mint-300/[0.32] bg-pitch-mint-300/[0.14] px-[10px] py-1 text-[10px] font-extrabold tracking-[0.8px] text-pitch-mint-100"
-                aria-label={`${MODE_BADGE[forcedMode].label} mode`}
+            {/* Voice toggle is always present — the recruit chat used to
+                show a "🎓 Recruit" mint badge here, but the status line
+                below the coach name already carries the mode signal and
+                voice mode is more useful than a decorative pill. */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!voiceEnabled) setVoiceError(null)
+                setVoiceEnabled(!voiceEnabled)
+              }}
+              aria-label={voiceEnabled ? 'Disable voice mode' : 'Enable voice mode'}
+              aria-pressed={voiceEnabled}
+              className={`flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full border transition-colors ${
+                voiceEnabled
+                  ? 'border-pitch-mint-300/40 bg-pitch-mint-300/[0.18] text-pitch-mint-300'
+                  : 'border-white/[0.08] bg-white/[0.06] text-white/70 hover:bg-white/[0.1]'
+              }`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-[14px] w-[14px]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
               >
-                <span className="text-[11px]" aria-hidden="true">
-                  {MODE_BADGE[forcedMode].emoji}
-                </span>
-                {MODE_BADGE[forcedMode].label}
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  if (!voiceEnabled) setVoiceError(null)
-                  setVoiceEnabled(!voiceEnabled)
-                }}
-                aria-label={voiceEnabled ? 'Disable voice mode' : 'Enable voice mode'}
-                aria-pressed={voiceEnabled}
-                className={`flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full border transition-colors ${
-                  voiceEnabled
-                    ? 'border-pitch-mint-300/40 bg-pitch-mint-300/[0.18] text-pitch-mint-300'
-                    : 'border-white/[0.08] bg-white/[0.06] text-white/70 hover:bg-white/[0.1]'
-                }`}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-[14px] w-[14px]"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14" />
-                </svg>
-              </button>
-            )}
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+            </button>
           </div>
 
           {/* Only render the toggle on the unforced (Pre-Game) chat. */}
