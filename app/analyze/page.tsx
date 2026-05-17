@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { extractFrames, validateVideoFile, getFileSizeWarning } from '@/lib/video'
+import { setLastUsed } from '@/lib/lastUsed'
 
 type PlayerPosition = 'Forward' | 'Midfielder' | 'Defender' | 'Goalkeeper'
 type AnalysisStage = 'upload' | 'details' | 'processing' | 'results'
@@ -23,6 +24,12 @@ export default function AnalyzePage() {
   const [isLongVideo, setIsLongVideo] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Reaching this page counts as "engaging Game Analysis" — feeds the
+  // home-page smart pick on the next visit.
+  useEffect(() => {
+    setLastUsed('analyze')
+  }, [])
 
   const handleFileSelect = () => {
     fileInputRef.current?.click()

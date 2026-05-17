@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { setLastUsed } from '@/lib/lastUsed'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -55,6 +56,12 @@ export default function RecruitPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Reaching this page counts as "engaging Recruit Prep" — feeds the
+  // home-page smart pick on the next visit.
+  useEffect(() => {
+    setLastUsed('recruit')
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
