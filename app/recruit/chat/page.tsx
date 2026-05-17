@@ -1,236 +1,109 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { setLastUsed } from '@/lib/lastUsed'
+import CoachChat from '@/components/CoachChat'
+import {
+  getRecruitProgress,
+  isComplete,
+  type RecruitProgress,
+} from '@/lib/recruitProgress'
+import { summariseAnswers } from '@/lib/recruitResults'
 
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-}
+/**
+ * Recruit Prep chat handoff.
+ *
+ * Re-uses the existing Coach Fabian chat with three small tweaks:
+ *   - forcedMode='recruit' → hides Hype/Calm toggle, swaps in a mint badge
+ *   - lastUsedFeature='recruit' → engagement signal for the home chip
+ *   - contextBanner → mint-tinted summary of the parent's quiz answers,
+ *     OR (if the quiz hasn't been taken) a soft nudge back to /recruit
+ *
+ * The context banner is UI-only — we do NOT inject quiz answers into the
+ * LLM system prompt yet. That's a deliberate follow-up (per brief) since
+ * it needs prompt-engineering work. The banner is a visible reminder to
+ * the parent that they have context Coach can speak to.
+ */
+export default function RecruitChatPage() {
+  // Banner contents depend on localStorage, so we render the chat without
+  // a banner on first render and pop the banner in once we've hydrated.
+  // Keeps SSR markup stable.
+  const [progress, setProgress] = useState<RecruitProgress | null>(null)
 
-const welcomeMessage = "Hey! I'm Coach Fabian. 🎓⚽ I'm here to help you navigate the college soccer recruitment process. What questions do you have?"
-
-const initialQuickReplies = [
-  "When should we start?",
-  "D1 vs D2 vs D3?",
-  "How do scholarships work?",
-  "What's a highlight video?",
-]
-
-const fallbackTopics = [
-  "Tell me about scholarships",
-  "When do coaches start recruiting?",
-  "What's a showcase tournament?",
-]
-
-// Extract suggested topics from assistant message
-function extractSuggestedTopics(content: string): string[] {
-  const topics: string[] = []
-  const lines = content.split('\n')
-  let inSuggestions = false
-
-  for (const line of lines) {
-    // Check for various formats of the "Want to know more" section
-    if (line.toLowerCase().includes('want to know more') ||
-        line.toLowerCase().includes('follow-up') ||
-        line.toLowerCase().includes('you might ask')) {
-      inSuggestions = true
-      continue
-    }
-    if (inSuggestions) {
-      // Match lines starting with •, -, or numbers
-      const cleanLine = line.replace(/^[•\-\d.)\s]+/, '').trim()
-      if (cleanLine && cleanLine.length > 3 && cleanLine.length < 60) {
-        topics.push(cleanLine)
-      }
-    }
-  }
-  return topics.slice(0, 3) // Max 3 topics
-}
-
-export default function RecruitPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: welcomeMessage },
-  ])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  // Reaching this page counts as "engaging Recruit Prep" — feeds the
-  // home-page smart pick on the next visit.
   useEffect(() => {
-    setLastUsed('recruit')
+    setProgress(getRecruitProgress())
   }, [])
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const sendMessage = async (messageText?: string) => {
-    const userMessage = (messageText || input).trim()
-    if (!userMessage || isLoading) return
-
-    setInput('')
-
-    const newMessages: Message[] = [
-      ...messages,
-      { role: 'user', content: userMessage },
-    ]
-    setMessages(newMessages)
-    setIsLoading(true)
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages, mode: 'recruit' }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setMessages([...newMessages, { role: 'assistant', content: data.message }])
-      } else {
-        setMessages([
-          ...newMessages,
-          { role: 'assistant', content: "Oops! Something went wrong. Try again?" },
-        ])
-      }
-    } catch {
-      setMessages([
-        ...newMessages,
-        { role: 'assistant', content: "Oops! Couldn't connect. Check your internet?" },
-      ])
-    } finally {
-      setIsLoading(false)
+  const banner = (() => {
+    if (!progress) return undefined
+    if (isComplete(progress.answers)) {
+      return <CompletedBanner summary={summariseAnswers(progress.answers)} />
     }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
+    // Soft nudge — kept gentle so a parent who really just wants to chat
+    // isn't blocked. Tapping "Take it" jumps back to the readiness check.
+    return <NudgeBanner />
+  })()
 
   return (
-    <div className="flex flex-col h-[100dvh] max-w-lg mx-auto bg-gradient-to-b from-emerald-50 to-teal-50">
-      {/* Header */}
-      <div className="p-4 shadow-md bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
-        <div className="flex items-center justify-between">
-          <Link href="/quiz" className="text-white/80 hover:text-white">
-            ← Quiz
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🎓</span>
-            <h1 className="text-xl font-bold">Coach Fabian</h1>
-          </div>
-          <Link href="/" className="text-white/80 hover:text-white">
-            Home
-          </Link>
-        </div>
-        <p className="text-center text-emerald-100 text-sm mt-1">College Recruitment Help</p>
-      </div>
+    <CoachChat
+      forcedMode="recruit"
+      backHref="/recruit"
+      lastUsedFeature="recruit"
+      statusLabel="Recruit mode"
+      welcomeOverride={
+        progress && isComplete(progress.answers)
+          ? 'Some good starting points based on your results:'
+          : 'Hey! 🎓 I can help with anything college soccer — recruiting timelines, scholarships, highlight videos, you name it.'
+      }
+      quickRepliesOverride={[
+        'How do I email a coach?',
+        "What's a showcase?",
+        'When to start campus visits?',
+        'Highlight video tips',
+      ]}
+      contextBanner={banner}
+    />
+  )
+}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`mb-3 ${message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}
-          >
-            <div
-              className={`px-4 py-3 rounded-2xl max-w-[85%] ${
-                message.role === 'user'
-                  ? 'bg-emerald-500 text-white rounded-br-md'
-                  : 'bg-white text-gray-800 rounded-bl-md shadow-sm'
-              }`}
-            >
-              <div
-                className="text-sm whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{
-                  __html: message.content
-                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/^• /gm, '• ')
-                    .replace(/\n/g, '<br/>')
-                }}
-              />
-            </div>
-          </div>
-        ))}
+function CompletedBanner({ summary }: { summary: string }) {
+  // Quoted summary like v15: "I've seen your readiness check — your athlete
+  // is a 10th grade ECNL Forward with a 3.5+ GPA. What do you want to dig
+  // into?"
+  return (
+    <div
+      className="rounded-2xl border border-pitch-mint-300/[0.22] px-3 py-[10px] text-[11px] font-medium leading-[1.5] text-white/[0.78]"
+      style={{
+        background:
+          'linear-gradient(135deg, rgba(110,231,183,0.08) 0%, rgba(110,231,183,0.02) 100%)',
+      }}
+    >
+      I&rsquo;ve seen{' '}
+      <strong className="font-bold text-pitch-mint-100">your readiness check</strong>{' '}
+      — your athlete is{' '}
+      <strong className="font-bold text-pitch-mint-100">{summary}</strong>. What do
+      you want to dig into?
+    </div>
+  )
+}
 
-        {isLoading && (
-          <div className="flex justify-start mb-3">
-            <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-emerald-100">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 rounded-full animate-bounce bg-emerald-400" />
-                <span className="w-2 h-2 rounded-full animate-bounce [animation-delay:0.1s] bg-emerald-400" />
-                <span className="w-2 h-2 rounded-full animate-bounce [animation-delay:0.2s] bg-emerald-400" />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Quick Replies / Suggested Topics */}
-      {!isLoading && (
-        <div className="px-4 pb-2">
-          <div className="flex flex-wrap gap-2 justify-center">
-            {(() => {
-              // Get topics from last assistant message, or use fallbacks
-              const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant')
-              const suggestedTopics = lastAssistantMessage
-                ? extractSuggestedTopics(lastAssistantMessage.content)
-                : []
-
-              // Priority: extracted topics > initial replies (first message) > fallback topics
-              let topics: string[] = []
-              if (suggestedTopics.length > 0) {
-                topics = suggestedTopics
-              } else if (messages.length <= 2) {
-                topics = initialQuickReplies
-              } else {
-                topics = fallbackTopics
-              }
-
-              return topics.map((reply) => (
-                <button
-                  key={reply}
-                  onClick={() => sendMessage(reply)}
-                  className="px-3 py-1.5 rounded-full text-sm font-medium transition-all hover:scale-105 bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                >
-                  {reply}
-                </button>
-              ))
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* Input */}
-      <div className="p-4 border-t bg-white/80 backdrop-blur">
-        <div className="flex gap-2 items-center">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about college recruitment..."
-            className="flex-1 px-4 py-3 border rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white"
-            disabled={isLoading}
-          />
-          <button
-            onClick={() => sendMessage()}
-            disabled={isLoading || !input.trim()}
-            className="px-6 py-3 text-white rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-          >
-            Send
-          </button>
-        </div>
-      </div>
+function NudgeBanner() {
+  return (
+    <div
+      className="rounded-2xl border border-pitch-mint-300/[0.22] px-3 py-[10px] text-[11px] font-medium leading-[1.5] text-white/[0.78]"
+      style={{
+        background:
+          'linear-gradient(135deg, rgba(110,231,183,0.08) 0%, rgba(110,231,183,0.02) 100%)',
+      }}
+    >
+      Quick tip: take the{' '}
+      <Link
+        href="/recruit"
+        className="font-bold text-pitch-mint-100 underline decoration-pitch-mint-300/40 underline-offset-2"
+      >
+        2-minute readiness check
+      </Link>{' '}
+      first so I can give you tailored answers.
     </div>
   )
 }
