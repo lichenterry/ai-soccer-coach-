@@ -40,15 +40,8 @@ export default function Home() {
   return (
     <Stage variant="hero">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-[18px] pb-[22px] pt-[50px]">
-        {/* Sign-in lives top-left; brand mark dead-centre. The two share the
-            stage's safe-area top inset. Auth flow isn't built yet — this is
-            a placeholder so the surface ships in the locked layout. */}
-        <a
-          href="#sign-in"
-          className="absolute left-[22px] top-[56px] z-[5] text-[13px] font-semibold text-white/70 hover:text-white"
-        >
-          Sign In
-        </a>
+        {/* Brand mark sits dead-centre at the top. No left-aligned Sign In
+            — auth isn't built yet and the placeholder added noise. */}
         <div className="absolute left-1/2 top-[52px] z-[5] -translate-x-1/2">
           <BrandMark />
         </div>
