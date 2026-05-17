@@ -10,17 +10,33 @@ export interface Message {
   content: string
 }
 
+export interface CoachOptions {
+  /**
+   * Extra system context appended to the mode's base system prompt with a
+   * blank line in between. Used by recruit mode to inject the parent's
+   * readiness check (see lib/recruitContext.ts). Anything falsy is
+   * ignored — keep the base prompt unchanged when there's nothing to add.
+   */
+  extraSystemContext?: string | null
+}
+
 export async function getCoachResponse(
   messages: Message[],
-  mode: CoachMode
+  mode: CoachMode,
+  options: CoachOptions = {},
 ): Promise<string> {
   // Recruit mode needs more tokens for detailed explanations
   const maxTokens = mode === 'recruit' ? 500 : 150
 
+  const baseSystem = systemPrompts[mode]
+  const system = options.extraSystemContext
+    ? `${baseSystem}\n\n${options.extraSystemContext}`
+    : baseSystem
+
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: maxTokens,
-    system: systemPrompts[mode],
+    system,
     messages: messages.map((m) => ({
       role: m.role,
       content: m.content,

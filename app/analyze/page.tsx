@@ -1,13 +1,31 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { extractFrames, validateVideoFile, getFileSizeWarning } from '@/lib/video'
+import { setLastUsed } from '@/lib/lastUsed'
+import Stage from '@/components/Stage'
+import BrandMark from '@/components/BrandMark'
+import StepDots from '@/components/StepDots'
+import UploadZone from '@/components/UploadZone'
+import MessageBubble from '@/components/MessageBubble'
 
 type PlayerPosition = 'Forward' | 'Midfielder' | 'Defender' | 'Goalkeeper'
 type AnalysisStage = 'upload' | 'details' | 'processing' | 'results'
 
-const positions: PlayerPosition[] = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper']
+const positions: PlayerPosition[] = [
+  'Forward',
+  'Midfielder',
+  'Defender',
+  'Goalkeeper',
+]
+
+const STAGE_NUMBER: Record<AnalysisStage, number> = {
+  upload: 1,
+  details: 2,
+  processing: 3,
+  results: 4,
+}
 
 export default function AnalyzePage() {
   const [stage, setStage] = useState<AnalysisStage>('upload')
@@ -21,12 +39,15 @@ export default function AnalyzePage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [isLongVideo, setIsLongVideo] = useState(false)
+  const [clipDuration, setClipDuration] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  const handleFileSelect = () => {
-    fileInputRef.current?.click()
-  }
+  // Reaching this page counts as "engaging Game Analysis" — feeds the
+  // home-page smart pick on the next visit.
+  useEffect(() => {
+    setLastUsed('analyze')
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -35,6 +56,7 @@ export default function AnalyzePage() {
     setError(null)
     setWarning(null)
     setIsLongVideo(false)
+    setClipDuration(null)
 
     const validation = validateVideoFile(file)
     if (!validation.valid) {
@@ -47,13 +69,13 @@ export default function AnalyzePage() {
       setWarning(sizeWarning)
     }
 
-    // Check video duration
+    // Async metadata probe — captures duration for the results header and
+    // flags >60s clips as long. Doesn't block stage advance.
     const video = document.createElement('video')
     video.preload = 'metadata'
     video.onloadedmetadata = () => {
-      if (video.duration > 60) {
-        setIsLongVideo(true)
-      }
+      if (video.duration > 60) setIsLongVideo(true)
+      setClipDuration(Math.round(video.duration))
       URL.revokeObjectURL(video.src)
     }
     video.src = URL.createObjectURL(file)
@@ -70,7 +92,7 @@ export default function AnalyzePage() {
     setError(null)
 
     try {
-      setProgress('Loading video...')
+      setProgress('Loading video…')
       const frames = await extractFrames(selectedFile, 30, (stageText, pct) => {
         setProgress(`${stageText} ${pct}%`)
       })
@@ -79,13 +101,13 @@ export default function AnalyzePage() {
         throw new Error('Could not extract frames from video')
       }
 
-      setProgress('Coach Fabian is reviewing your footage...')
+      setProgress('Coach Fabian is reviewing your footage…')
 
       const response = await fetch('/api/analyze-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          frames: frames.map(f => f.data),
+          frames: frames.map((f) => f.data),
           position,
           playerDescription: playerDescription.trim(),
         }),
@@ -131,15 +153,14 @@ export default function AnalyzePage() {
         setIsPlayingAudio(false)
         URL.revokeObjectURL(audioUrl)
       }
-
       audio.onerror = () => {
         setIsPlayingAudio(false)
         URL.revokeObjectURL(audioUrl)
       }
 
       await audio.play()
-    } catch (error) {
-      console.error('Audio playback error:', error)
+    } catch (e) {
+      console.error('Audio playback error:', e)
       setIsPlayingAudio(false)
     }
   }, [])
@@ -153,219 +174,318 @@ export default function AnalyzePage() {
     setError(null)
     setWarning(null)
     setIsLongVideo(false)
+    setClipDuration(null)
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current = null
     }
   }
 
+  const canAnalyze = !!(playerDescription.trim() && position && selectedFile)
+  const currentStep = STAGE_NUMBER[stage]
+  // Stage 4 (results) doesn't show step dots in v14 — only stages 1-3.
+  const showStepDots = stage !== 'results'
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-500 to-teal-600 flex flex-col">
-      {/* Header */}
-      <div className="p-4 flex items-center justify-between">
-        <Link href="/" className="text-white/80 hover:text-white flex items-center gap-1">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-            <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
-          </svg>
-          Back
-        </Link>
-        <h1 className="text-white font-bold text-lg">Analyze My Game</h1>
-        <div className="w-12" />
-      </div>
+    <Stage>
+      <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col px-[18px] pb-[22px] pt-[50px]">
+        {/* === Top bar (back + brand mark) ================================ */}
+        <div className="mb-1 flex items-center justify-between">
+          {stage === 'processing' ? (
+            // Processing has no back affordance in the v14 spec — analysis
+            // is in flight, the user can't usefully cancel mid-fetch.
+            <span className="h-[30px] w-[30px]" aria-hidden="true" />
+          ) : (
+            <Link
+              href={stage === 'upload' ? '/' : '#'}
+              onClick={(e) => {
+                if (stage === 'upload') return
+                e.preventDefault()
+                handleStartOver()
+              }}
+              aria-label="Back"
+              className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.06] text-[14px] text-white/70 hover:bg-white/[0.1]"
+            >
+              ‹
+            </Link>
+          )}
+          <BrandMark />
+          <span className="h-[30px] w-[30px]" aria-hidden="true" />
+        </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-md">
+        {showStepDots && <StepDots current={currentStep} total={3} />}
 
-          {/* Upload stage */}
-          {stage === 'upload' && (
-            <div className="bg-white rounded-2xl p-6 shadow-xl text-center">
-              <div className="text-5xl mb-4">🎬</div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Upload Your Game Video</h2>
-              <p className="text-gray-600 mb-6 text-sm">
-                For best results, upload a <strong>15-30 second clip</strong> of a specific play you want feedback on.
-              </p>
+        {/* === STAGE 1 — Upload =========================================== */}
+        {stage === 'upload' && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-[18px] py-3">
+            <h1
+              className="text-center text-[32px] font-black leading-[1.05] text-white"
+              style={{ letterSpacing: '-1.2px' }}
+            >
+              Show me
+              <br />
+              a play.
+            </h1>
+            <p className="-mt-2 max-w-[220px] text-center text-[13px] font-medium leading-[1.5] text-white/[0.55]">
+              Upload a short clip and Coach Fabian will break it down.
+            </p>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/mp4,video/quicktime,video/webm,video/x-m4v"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-
-              <button
-                onClick={handleFileSelect}
-                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-4 px-6 rounded-full hover:scale-105 transition-all shadow-lg"
+            {error && (
+              <div
+                role="alert"
+                className="w-full rounded-2xl border border-red-400/40 bg-red-400/[0.08] px-3 py-2 text-center text-[12px] font-semibold text-red-200"
               >
-                Choose Video
-              </button>
+                {error}
+              </div>
+            )}
 
-              {error && (
-                <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
+            <UploadZone inputRef={fileInputRef} onFileChange={handleFileChange} />
+          </div>
+        )}
 
-              <p className="mt-4 text-xs text-gray-400">
-                MP4, MOV, or WebM up to 200MB
+        {/* === STAGE 2 — Details ========================================== */}
+        {stage === 'details' && (
+          <div className="flex flex-1 flex-col pt-2">
+            <h1
+              className="mb-1 mt-[18px] text-[24px] font-black leading-[1.05] text-white"
+              style={{ letterSpacing: '-0.8px' }}
+            >
+              A few
+              <br />
+              quick details.
+            </h1>
+            <p className="mb-[18px] text-[12.5px] font-medium text-white/[0.55]">
+              So Coach Fabian can find your kid in the footage.
+            </p>
+
+            {isLongVideo && (
+              <div className="mb-3 rounded-xl border border-blue-400/30 bg-blue-400/[0.06] px-3 py-2 text-[11.5px] font-medium text-blue-200">
+                📹 This clip is over a minute — Coach Fabian works best with
+                shorter plays. Continue if you want, or trim and re-upload.
+              </div>
+            )}
+
+            {warning && (
+              <div className="mb-3 rounded-xl border border-amber-300/30 bg-amber-300/[0.06] px-3 py-2 text-[11.5px] font-medium text-amber-200">
+                {warning}
+              </div>
+            )}
+
+            {/* Player description ----------------------------------------- */}
+            <div className="mb-4">
+              <label
+                htmlFor="player-description"
+                className="mb-2 block text-[11px] font-extrabold uppercase tracking-[1.2px] text-white/50"
+              >
+                How to spot them
+              </label>
+              <input
+                id="player-description"
+                type="text"
+                value={playerDescription}
+                onChange={(e) => setPlayerDescription(e.target.value)}
+                placeholder="Blue jersey, number 7"
+                className="w-full rounded-2xl border border-white/10 bg-white/[0.05] px-[14px] py-3 text-[13px] font-medium text-white/85 placeholder:text-white/30 focus:border-pitch-mint-300/40 focus:outline-none focus:ring-1 focus:ring-pitch-mint-300/30"
+              />
+              <p className="mt-[6px] text-[10.5px] font-medium text-white/35">
+                Jersey color, number, or anything visible
               </p>
             </div>
-          )}
 
-          {/* Details stage */}
-          {stage === 'details' && (
-            <div className="bg-white rounded-2xl p-6 shadow-xl">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">Help Me Find You</h2>
-
-              {isLongVideo && (
-                <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">
-                  📹 This video is over 1 minute. Coach Fabian works best with short clips focused on one play. You can still continue, but consider trimming next time!
-                </div>
-              )}
-
-              {warning && (
-                <div className="mb-4 p-3 bg-amber-50 text-amber-700 rounded-lg text-sm">
-                  {warning}
-                </div>
-              )}
-
-              <div className="mb-5">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  What do you look like in the video?
-                </label>
-                <input
-                  type="text"
-                  value={playerDescription}
-                  onChange={(e) => setPlayerDescription(e.target.value)}
-                  placeholder="e.g., Blue jersey, number 7"
-                  className="w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-800"
-                />
-                <p className="mt-1 text-xs text-gray-400">
-                  Jersey color, number, or anything that helps spot you
-                </p>
-              </div>
-
-              <div className="mb-5">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  What position do you play?
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {positions.map((pos) => (
+            {/* Position grid --------------------------------------------- */}
+            <div className="mb-4">
+              <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-[1.2px] text-white/50">
+                Position
+              </span>
+              <div className="grid grid-cols-2 gap-[6px]">
+                {positions.map((pos) => {
+                  const selected = position === pos
+                  return (
                     <button
                       key={pos}
+                      type="button"
                       onClick={() => setPosition(pos)}
-                      className={`py-3 px-4 rounded-xl font-medium transition-all ${
-                        position === pos
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                      className={
+                        selected
+                          ? 'rounded-xl border-[1.5px] border-pitch-mint-300/55 px-2 py-[10px] text-center text-[12px] font-bold tracking-[-0.1px] text-white shadow-[0_0_14px_rgba(110,231,183,0.15)]'
+                          : 'rounded-xl border border-white/[0.09] bg-white/[0.05] px-2 py-[10px] text-center text-[12px] font-bold tracking-[-0.1px] text-white/85 hover:bg-white/[0.08]'
+                      }
+                      style={
+                        selected
+                          ? {
+                              background:
+                                'linear-gradient(135deg, rgba(110,231,183,0.18) 0%, rgba(110,231,183,0.06) 100%)',
+                            }
+                          : undefined
+                      }
+                      aria-pressed={selected}
                     >
                       {pos}
                     </button>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
+            </div>
 
-              <div className="mb-5 flex items-center justify-center">
-                <button
-                  onClick={() => setVoiceEnabled(!voiceEnabled)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    voiceEnabled
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gray-200 text-gray-600'
-                  }`}
-                >
-                  {voiceEnabled ? '🔊' : '🔇'}
-                  Voice {voiceEnabled ? 'ON' : 'OFF'}
-                </button>
+            {error && (
+              <div
+                role="alert"
+                className="mb-3 rounded-xl border border-red-400/40 bg-red-400/[0.08] px-3 py-2 text-[12px] font-semibold text-red-200"
+              >
+                {error}
               </div>
+            )}
 
-              {error && (
-                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-
+            {/* CTAs pinned bottom ---------------------------------------- */}
+            <div className="mt-auto flex flex-col gap-[10px]">
               <button
+                type="button"
                 onClick={handleAnalyze}
-                disabled={!playerDescription.trim() || !position}
-                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-4 px-6 rounded-full hover:scale-105 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                disabled={!canAnalyze}
+                className="flex items-center justify-center gap-[7px] rounded-full bg-white px-[18px] py-[14px] text-[14px] font-extrabold tracking-[-0.2px] text-[#050b0e] shadow-[0_8px_22px_rgba(0,0,0,0.35),_0_1px_0_rgba(255,255,255,0.1)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Analyze My Game
+                Analyze the play <span className="text-[15px]">→</span>
               </button>
-
               <button
+                type="button"
                 onClick={handleStartOver}
-                className="w-full mt-3 text-gray-500 text-sm hover:text-gray-700"
+                className="px-2 py-2 text-center text-[11.5px] font-semibold text-white/40 underline decoration-white/15 underline-offset-2 hover:text-white/60"
               >
-                Choose different video
+                Choose a different clip
               </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Processing stage */}
-          {stage === 'processing' && (
-            <div className="bg-white rounded-2xl p-8 shadow-xl text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
-                <svg className="w-8 h-8 text-emerald-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        {/* === STAGE 3 — Processing ====================================== */}
+        {stage === 'processing' && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-[22px] py-3">
+            <div className="relative flex h-[180px] w-[180px] items-center justify-center">
+              <div
+                aria-hidden="true"
+                className="pitch-ball-3-glow pointer-events-none absolute -inset-[10px] animate-s3-glow-pulse rounded-full"
+                style={{ filter: 'blur(10px)' }}
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 animate-s3-ring-pulse rounded-full border-[1.5px] border-pitch-mint-300/25"
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-[18px] animate-s3-ring-pulse-delayed rounded-full border border-pitch-mint-300/15"
+              />
+              <div
+                aria-hidden="true"
+                className="pitch-ball-3 relative z-[1] h-[90px] w-[90px] animate-s3-spin"
+              />
+            </div>
+
+            <div className="text-center">
+              <div
+                className="text-[18px] font-extrabold text-white"
+                style={{ letterSpacing: '-0.4px' }}
+                aria-live="polite"
+              >
+                {progress || 'Watching the play…'}
+              </div>
+            </div>
+
+            <p className="max-w-[240px] text-center text-[12px] font-medium leading-[1.5] text-white/45">
+              Coach Fabian is pulling out the key moments. This usually takes
+              about a minute.
+            </p>
+          </div>
+        )}
+
+        {/* === STAGE 4 — Results ========================================= */}
+        {stage === 'results' && analysis && (
+          <div className="flex flex-1 flex-col overflow-hidden pt-3">
+            <div className="mb-[14px] flex items-center gap-[10px]">
+              <div
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[18px]"
+                style={{
+                  background:
+                    'linear-gradient(135deg, rgba(110,231,183,0.22) 0%, rgba(110,231,183,0.06) 100%)',
+                  border: '1px solid rgba(110,231,183,0.4)',
+                  boxShadow: '0 0 16px rgba(110,231,183,0.25)',
+                }}
+                aria-hidden="true"
+              >
+                ⚽
+              </div>
+              <div className="flex-1">
+                <div className="text-[14px] font-extrabold tracking-[-0.2px] text-white">
+                  Coach Fabian
+                </div>
+                <div className="mt-[1px] text-[10.5px] font-semibold text-white/50">
+                  {position ?? '—'}
+                  {clipDuration ? ` · ${clipDuration}s clip` : ''}
+                </div>
+              </div>
+              {/* Speaker icon — same SVG as the chat header. Toggles
+                  voiceEnabled and (re)plays the current analysis when on. */}
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !voiceEnabled
+                  setVoiceEnabled(next)
+                  if (next && analysis) playAudio(analysis)
+                }}
+                aria-label={voiceEnabled ? 'Disable voice playback' : 'Play analysis aloud'}
+                aria-pressed={voiceEnabled}
+                className={`flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full border transition-colors ${
+                  voiceEnabled
+                    ? 'border-pitch-mint-300/40 bg-pitch-mint-300/[0.18] text-pitch-mint-300'
+                    : 'border-white/[0.08] bg-white/[0.06] text-white/70 hover:bg-white/[0.1]'
+                } ${isPlayingAudio ? 'animate-pulse' : ''}`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-[14px] w-[14px]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14" />
                 </svg>
-              </div>
-              <p className="text-gray-600 font-medium">{progress}</p>
+              </button>
             </div>
-          )}
 
-          {/* Results stage */}
-          {stage === 'results' && analysis && (
-            <div className="bg-white rounded-2xl p-6 shadow-xl">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-800">Coach Fabian Says:</h2>
-                {voiceEnabled && (
-                  <button
-                    onClick={() => playAudio(analysis)}
-                    disabled={isPlayingAudio}
-                    className={`p-2 rounded-full ${
-                      isPlayingAudio ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {isPlayingAudio ? (
-                      <svg className="w-5 h-5 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                      </svg>
-                    )}
-                  </button>
-                )}
-              </div>
-
-              <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-                {analysis}
-              </div>
-
-              <div className="mt-6 flex gap-3">
-                <button
-                  onClick={handleStartOver}
-                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-3 px-6 rounded-full hover:scale-105 transition-all"
-                >
-                  Analyze Another
-                </button>
-                <Link
-                  href="/"
-                  className="flex-1 bg-gray-100 text-gray-700 font-bold py-3 px-6 rounded-full hover:bg-gray-200 transition-all text-center"
-                >
-                  Home
-                </Link>
-              </div>
+            {/* Analysis is free-form text from the model. Render as a single
+                coach bubble — see Future iteration note below. */}
+            <div className="flex-1 overflow-y-auto pb-3">
+              <MessageBubble content={analysis} isUser={false} />
             </div>
-          )}
 
-        </div>
+            {/* FUTURE ITERATION: v14 mocks two labeled bubbles — "What
+                worked" (mint) and "One thing to try" (gold). That requires
+                the analyze-video system prompt to return structured
+                sections (e.g. JSON or a delimited format). Out of scope for
+                this commit per brief; revisit when the prompt is updated. */}
+
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={handleStartOver}
+                className="flex-1 rounded-full bg-white px-[14px] py-3 text-center text-[13px] font-extrabold tracking-[-0.2px] text-[#050b0e] shadow-[0_6px_18px_rgba(0,0,0,0.3)]"
+              >
+                Analyze another
+              </button>
+              <Link
+                href="/"
+                className="flex-1 rounded-full border border-white/10 bg-white/[0.06] px-[14px] py-3 text-center text-[13px] font-bold tracking-[-0.1px] text-white/85 hover:bg-white/[0.1]"
+              >
+                Home
+              </Link>
+            </div>
+          </div>
+        )}
+
       </div>
-    </div>
+    </Stage>
   )
 }
