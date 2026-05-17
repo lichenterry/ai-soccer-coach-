@@ -485,22 +485,6 @@ export default function AnalyzePage() {
           </div>
         )}
 
-        {/* === Footer (upload + processing stages) ======================= */}
-        {(stage === 'upload' || stage === 'processing') && (
-          <div className="pt-3 text-center text-[11px] font-semibold text-white/35">
-            {stage === 'upload' ? (
-              <>
-                <a href="#tips" className="hover:text-white/55">
-                  Tips for good clips
-                </a>
-                <span className="mx-[6px] text-white/20">·</span>
-                <a href="#privacy" className="hover:text-white/55">
-                  Privacy
-                </a>
-              </>
-            ) : null}
-          </div>
-        )}
       </div>
     </Stage>
   )
