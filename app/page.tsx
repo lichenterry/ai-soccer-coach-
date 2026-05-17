@@ -5,17 +5,29 @@ import Stage from '@/components/Stage'
 import BrandMark from '@/components/BrandMark'
 import FeatureChip from '@/components/FeatureChip'
 import { getLastUsed, type Feature } from '@/lib/lastUsed'
+import {
+  getRecruitProgress,
+  progressLabel,
+  type RecruitProgress,
+} from '@/lib/recruitProgress'
 
 const FEATURE_ORDER: Feature[] = ['pre-game', 'analyze', 'recruit']
 
 /**
  * Sub-copy override when a feature is the smart pick — used to hint at
- * continuity (e.g. "Continue last clip"). When the smart pick is something
- * the user hasn't actually engaged deeply with yet (pre-game default,
- * recruit step counter not wired) we fall back to the chip's default copy.
+ * continuity (e.g. "Continue last clip · or upload new" for Analyze, or
+ * "Step 4 of 7 · pick up where you left off" for a mid-flow Recruit quiz).
+ *
+ * Recruit pulls from the persisted quiz state via progressLabel(). If the
+ * parent hasn't engaged the readiness check, we fall back to the chip's
+ * default sub-copy.
  */
-function smartSubCopy(feature: Feature): string | undefined {
+function smartSubCopy(
+  feature: Feature,
+  recruit: RecruitProgress,
+): string | undefined {
   if (feature === 'analyze') return 'Continue last clip · or upload new'
+  if (feature === 'recruit') return progressLabel(recruit)
   return undefined
 }
 
@@ -24,10 +36,12 @@ export default function Home() {
   // smart pick to the default before localStorage has a chance to speak.
   // Initial render shows the default order — quietly correct on hydrate.
   const [smart, setSmart] = useState<Feature>('pre-game')
+  const [recruit, setRecruit] = useState<RecruitProgress | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     setSmart(getLastUsed())
+    setRecruit(getRecruitProgress())
     setHydrated(true)
   }, [])
 
@@ -86,14 +100,26 @@ export default function Home() {
         {/* === Chips + footer (pinned to bottom of the stage) ============= */}
         <div className="mt-auto flex flex-col">
           <div className="flex flex-col gap-[9px]">
-            {ordered.map((feature) => (
-              <FeatureChip
-                key={feature}
-                feature={feature}
-                smart={feature === smart}
-                subCopy={feature === smart ? smartSubCopy(feature) : undefined}
-              />
-            ))}
+            {ordered.map((feature) => {
+              // Recruit chip also gets its progress sub-copy when it's NOT
+              // the smart pick — a parent with a half-finished quiz should
+              // see "Step 4 of 7" even if their last action was Analyze.
+              // For other features we only override on the smart pick.
+              let sub: string | undefined
+              if (feature === smart) {
+                sub = recruit ? smartSubCopy(feature, recruit) : undefined
+              } else if (feature === 'recruit' && recruit) {
+                sub = progressLabel(recruit)
+              }
+              return (
+                <FeatureChip
+                  key={feature}
+                  feature={feature}
+                  smart={feature === smart}
+                  subCopy={sub}
+                />
+              )
+            })}
           </div>
           <div className="mt-[14px] text-center text-[11px] font-semibold text-white/40">
             {/* Privacy / Terms routes don't exist yet — placeholders so the
