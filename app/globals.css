@@ -124,6 +124,30 @@
     box-shadow: 0 0 14px rgba(110, 231, 183, 0.25);
   }
 
+  /* === Analyze stage-3 spinner =========================================== */
+  /* The processing-stage ball uses a smaller ::before than the home hero,
+     and we want the glow to be a true radial behind it. Class-based so the
+     stage-3 visuals can share .pitch-ball-3-glow without inline styles. */
+  .pitch-ball-3::before {
+    content: '⚽';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 90px;
+    line-height: 1;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+  }
+  .pitch-ball-3-glow {
+    background: radial-gradient(
+      circle,
+      rgba(110, 231, 183, 0.22) 0%,
+      rgba(110, 231, 183, 0.05) 50%,
+      transparent 75%
+    );
+  }
+
   /* === Mode-toggle slider ================================================ */
   /* Drives the mint-glass pill that slides under the active label. The
      `data-mode="calm"` parent attribute slides it to the right half. */

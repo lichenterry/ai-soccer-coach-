@@ -126,6 +126,22 @@ const config: Config = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
+        // Analyze stage 3 — concentric rings around the spinning ball.
+        s3RingPulse: {
+          "0%, 100%": { opacity: "0.3", transform: "scale(0.95)" },
+          "50%": { opacity: "0.8", transform: "scale(1.02)" },
+        },
+        // Analyze stage 3 — soft mint glow halo behind the spinner.
+        s3GlowPulse: {
+          "0%, 100%": { opacity: "0.6" },
+          "50%": { opacity: "1" },
+        },
+        // Analyze stage 3 — soccer ball spins (separate from ballCombo so
+        // the bob-and-roll on the hero doesn't fight with the steady spin).
+        s3Spin: {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "ball-combo": "ballCombo 5s ease-in-out infinite",
@@ -138,6 +154,10 @@ const config: Config = {
         "border-shift": "borderShift 3.5s linear infinite",
         "smart-glow": "smartGlow 2.6s ease-in-out infinite",
         "status-pulse": "statusPulse 2s ease-in-out infinite",
+        "s3-ring-pulse": "s3RingPulse 2s ease-in-out infinite",
+        "s3-ring-pulse-delayed": "s3RingPulse 2s ease-in-out 0.5s infinite",
+        "s3-glow-pulse": "s3GlowPulse 3s ease-in-out infinite",
+        "s3-spin": "s3Spin 2.5s linear infinite",
       },
     },
   },
