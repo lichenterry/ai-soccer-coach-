@@ -42,6 +42,7 @@ export default function CoachChat() {
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [isPreparingAudio, setIsPreparingAudio] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const voiceButtonRef = useRef<VoiceButtonRef>(null)
@@ -68,52 +69,67 @@ export default function CoachChat() {
     }
   }
 
-  // Play text as TTS — gated by voiceEnabled.
-  const playAudio = useCallback(async (text: string) => {
-    try {
-      setIsPreparingAudio(true)
-      const response = await fetch('/api/speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      })
-
-      if (!response.ok) {
-        console.error('Failed to get speech')
-        setIsPreparingAudio(false)
-        return
-      }
-
-      const audioBlob = await response.blob()
-      const audioUrl = URL.createObjectURL(audioBlob)
-      const audio = new Audio(audioUrl)
-      audioRef.current = audio
-
-      setIsPreparingAudio(false)
-      setIsPlayingAudio(true)
-
-      audio.onended = () => {
-        setIsPlayingAudio(false)
-        URL.revokeObjectURL(audioUrl)
-        // Auto-listen after the coach finishes speaking — keeps the back-and-
-        // forth flowing without forcing the user back to the mic each turn.
-        setTimeout(() => {
-          voiceButtonRef.current?.startListening()
-        }, 500)
-      }
-
-      audio.onerror = () => {
-        setIsPlayingAudio(false)
-        URL.revokeObjectURL(audioUrl)
-      }
-
-      await audio.play()
-    } catch (error) {
-      console.error('Audio playback error:', error)
-      setIsPreparingAudio(false)
-      setIsPlayingAudio(false)
-    }
+  // Play text as TTS — gated by voiceEnabled. On any failure we surface a
+  // visible message and flip voice mode off so the user knows why the coach
+  // went quiet (most common cause: OpenAI quota / billing).
+  const failVoice = useCallback((status?: number) => {
+    const message =
+      status === 429
+        ? 'Voice is rate-limited or out of credits — voice mode turned off.'
+        : 'Voice playback failed — voice mode turned off.'
+    setVoiceError(message)
+    setVoiceEnabled(false)
+    setIsPreparingAudio(false)
+    setIsPlayingAudio(false)
   }, [])
+
+  const playAudio = useCallback(
+    async (text: string) => {
+      try {
+        setIsPreparingAudio(true)
+        const response = await fetch('/api/speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        })
+
+        if (!response.ok) {
+          console.error('Failed to get speech', response.status)
+          failVoice(response.status)
+          return
+        }
+
+        const audioBlob = await response.blob()
+        const audioUrl = URL.createObjectURL(audioBlob)
+        const audio = new Audio(audioUrl)
+        audioRef.current = audio
+
+        setIsPreparingAudio(false)
+        setIsPlayingAudio(true)
+
+        audio.onended = () => {
+          setIsPlayingAudio(false)
+          URL.revokeObjectURL(audioUrl)
+          // Auto-listen after the coach finishes speaking — keeps the back-and-
+          // forth flowing without forcing the user back to the mic each turn.
+          setTimeout(() => {
+            voiceButtonRef.current?.startListening()
+          }, 500)
+        }
+
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl)
+          failVoice()
+        }
+
+        await audio.play()
+      } catch (error) {
+        console.error('Audio playback error:', error)
+        failVoice()
+      }
+    },
+    [failVoice],
+  )
 
   const sendMessage = async (messageText?: string) => {
     const userMessage = (messageText || input).trim()
@@ -218,12 +234,12 @@ export default function CoachChat() {
               </div>
             </div>
 
-            {/* TODO: voice mode icon — design pending. Functional toggle
-                stays wired so the underlying behaviour ships now and we
-                drop in the real icon later without a logic change. */}
             <button
               type="button"
-              onClick={() => setVoiceEnabled(!voiceEnabled)}
+              onClick={() => {
+                if (!voiceEnabled) setVoiceError(null)
+                setVoiceEnabled(!voiceEnabled)
+              }}
               aria-label={voiceEnabled ? 'Disable voice mode' : 'Enable voice mode'}
               aria-pressed={voiceEnabled}
               className={`flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full border transition-colors ${
@@ -242,8 +258,8 @@ export default function CoachChat() {
                 strokeLinejoin="round"
                 aria-hidden="true"
               >
-                <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                <path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z" />
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14" />
               </svg>
             </button>
           </div>
@@ -278,6 +294,15 @@ export default function CoachChat() {
           {voiceEnabled && isPreparingAudio && (
             <div className="self-center py-2 text-[11px] font-medium text-white/50">
               Preparing audio…
+            </div>
+          )}
+
+          {voiceError && (
+            <div
+              role="status"
+              className="self-center rounded-full border border-amber-300/30 bg-amber-300/[0.08] px-3 py-[6px] text-[10.5px] font-semibold text-amber-200/90"
+            >
+              {voiceError}
             </div>
           )}
 
