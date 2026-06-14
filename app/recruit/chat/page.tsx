@@ -77,7 +77,7 @@ export default function RecruitChatPage() {
   return (
     <CoachChat
       forcedMode="recruit"
-      backHref="/recruit"
+      backHref="/"
       lastUsedFeature="recruit"
       statusLabel="Recruit mode"
       welcomeOverride={

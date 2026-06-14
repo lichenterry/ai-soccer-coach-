@@ -57,7 +57,7 @@ export default function Home() {
         {/* Brand mark sits dead-centre at the top. No left-aligned Sign In
             — auth isn't built yet and the placeholder added noise. */}
         <div className="absolute left-1/2 top-[52px] z-[5] -translate-x-1/2">
-          <BrandMark />
+          <BrandMark interactive={false} />
         </div>
 
         {/* === Centered cluster: ball + headline ========================== */}
