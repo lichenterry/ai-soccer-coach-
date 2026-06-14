@@ -39,7 +39,7 @@ export default function MessageBubble({ content, isUser }: MessageBubbleProps) {
 
   return (
     <div
-      className="self-start max-w-[78%] rounded-2xl rounded-bl-[4px] border border-white/[0.09] bg-white/[0.07] px-[13px] py-[11px] text-[13px] font-medium leading-[1.5] text-white/[0.92] shadow-[0_2px_8px_rgba(0,0,0,0.2)] backdrop-blur-md [&>strong]:font-bold [&>strong]:text-white"
+      className="self-start max-w-[78%] whitespace-pre-wrap rounded-2xl rounded-bl-[4px] border border-white/[0.09] bg-white/[0.07] px-[13px] py-[11px] text-[13px] font-medium leading-[1.5] text-white/[0.92] shadow-[0_2px_8px_rgba(0,0,0,0.2)] backdrop-blur-md [&>strong]:font-bold [&>strong]:text-white"
       // Coach copy can include **emphasis** — render bold without markdown lib.
       dangerouslySetInnerHTML={{ __html: renderCoachMarkup(content) }}
     />
