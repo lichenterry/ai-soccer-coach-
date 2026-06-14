@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 // Inter is the locked typeface for Coach Fabian. Weight 900 is used on
@@ -35,7 +36,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="font-sans antialiased bg-black text-white">{children}</body>
+      <body className="font-sans antialiased bg-black text-white">
+        {children}
+        <Analytics />
+      </body>
     </html>
   )
 }
