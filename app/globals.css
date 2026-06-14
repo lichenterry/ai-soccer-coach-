@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------------
- * Pitch design system — extras that can't be expressed cleanly with utility
+ * Coach Fabian design system — extras that can't be expressed cleanly with utility
  * classes (animated gradient borders, ::before pseudo-elements, etc).
  *
  * Tokens, colours, and keyframes live in tailwind.config.ts. Keep this file

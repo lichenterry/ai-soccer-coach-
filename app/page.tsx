@@ -57,7 +57,7 @@ export default function Home() {
         {/* Brand mark sits dead-centre at the top. No left-aligned Sign In
             — auth isn't built yet and the placeholder added noise. */}
         <div className="absolute left-1/2 top-[52px] z-[5] -translate-x-1/2">
-          <BrandMark interactive={false} />
+          <BrandMark interactive={false} subtitle />
         </div>
 
         {/* === Centered cluster: ball + headline ========================== */}
@@ -87,18 +87,14 @@ export default function Home() {
           {/* Headline + subhead */}
           <div className="px-[6px] pt-[6px]">
             <h1
-              className="mb-[6px] text-[28px] font-black leading-[1.04] text-white"
+              className="mb-[6px] whitespace-nowrap text-[24px] font-black leading-[1.04] text-white"
               style={{ letterSpacing: '-1.2px' }}
             >
-              Their best
-              <br />
-              game starts
-              <br />
-              here.
+              Their best game starts here.
             </h1>
             <p className="text-[12.5px] font-medium leading-[1.5] text-white/[0.55]">
-              An AI coach in your young athlete&rsquo;s pocket — for nerves,
-              hype, and game film review.
+              An AI coach for your kid — and you. Game prep, film review,
+              and a college recruiting plan.
             </p>
           </div>
         </div>

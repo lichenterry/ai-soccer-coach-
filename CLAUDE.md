@@ -1,9 +1,11 @@
-# Pitch — AI Soccer Coach
+# Coach Fabian — AI Soccer Coach
+
+**Production URL:** https://coachfabian.app (custom domain on Vercel; the original `ai-soccer-coach.vercel.app` preview URL still works as a fallback).
 
 ## Project Overview
-Pitch is an AI soccer coach for the parents of competitive youth athletes (roughly 10–15 years old). Three surfaces today: a Pre-Game Coach chat (hype + calm), a Game Analysis upload-and-review flow, and a Recruit Prep readiness check that hands off to a recruitment-focused chat with Coach Fabian.
+Coach Fabian is an AI soccer coach for the parents of competitive youth athletes (roughly 10–15 years old). Three surfaces today: a Pre-Game Coach chat (hype + calm), a Game Analysis upload-and-review flow, and a Recruit Prep readiness check that hands off to a recruitment-focused chat with Coach Fabian.
 
-The product is fronted by **Coach Fabian**, a single AI personality the parent and player interact with across all three modes.
+The product *is* **Coach Fabian** — a single AI personality the parent and player interact with across all three modes. (Renamed from "Pitch" — internal Tailwind tokens like `pitch-mint` and localStorage keys like `pitch.recruitProgress` were left as-is; they're invisible to users and renaming localStorage would wipe saved quiz progress.)
 
 ## Tech Stack
 - **Framework**: Next.js 14 (App Router) + TypeScript
@@ -52,7 +54,7 @@ When the parent asks a question in `/recruit/chat`, the page reads their answers
 All tokens live in `tailwind.config.ts`.
 
 - **Brand accent**: `#6ee7b7` (named `pitch-mint`, full 50–900 scale). Used at varying alphas; the only colour the system needs.
-- **Stage background**: layered gradient (`bg-pitch-stage` / `bg-pitch-stage-hero`). All Pitch surfaces share this so the user feels continuous environment.
+- **Stage background**: layered gradient (`bg-pitch-stage` / `bg-pitch-stage-hero`). All Coach Fabian surfaces share this so the user feels continuous environment.
 - **Typography**: Inter via `next/font/google` (variable `--font-inter`). Weight 900 headlines, 700–800 UI, 500 body. Tight letter-spacing on big type (`-1.2px` to `-1.5px`).
 - **Keyframes** (registered in Tailwind, used via `animate-*` utilities):
   - `ball-combo` — soccer-ball rotate + bob (5s loop) on the home hero
@@ -97,7 +99,7 @@ app/
 
 components/
   Stage.tsx               Dark gradient wrapper
-  BrandMark.tsx           Centered "PITCH" wordmark
+  BrandMark.tsx           Centered "FABIAN" wordmark (links to home; subtitle on Home)
   IconBox.tsx             Dark-glass icon container (default + mint accent)
   FeatureChip.tsx         Home-page chip (smart + plain variants)
   ModeToggle.tsx          Hype/Calm slide toggle
@@ -137,7 +139,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ## Current Status
 
 ### Shipped
-- [x] Home page redesigned to Pitch design system (v7)
+- [x] Home page redesigned to Coach Fabian design system (v7)
 - [x] Pre-Game Coach chat redesigned (v13) — Hype + Calm modes, voice TTS, mic input
 - [x] Game Analysis flow redesigned (v14) — 4 stages, free-form coach response
 - [x] Recruit Prep unified at `/recruit` (v15) — intro + 7-step quiz + results + chat

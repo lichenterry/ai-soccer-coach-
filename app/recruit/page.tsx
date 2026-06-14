@@ -130,7 +130,7 @@ const QUESTIONS: Question[] = [
 ]
 
 const SHARE_TEXT =
-  "I just checked my kid's college soccer recruitment readiness on Pitch. Eye-opening."
+  "I just checked my kid's college soccer recruitment readiness with Coach Fabian. Eye-opening."
 
 export default function RecruitFlowPage() {
   // Default render = the intro state. localStorage is hydrated post-mount so

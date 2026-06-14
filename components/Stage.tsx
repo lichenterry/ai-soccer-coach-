@@ -8,7 +8,7 @@ interface StageProps {
 }
 
 /**
- * The shared dark-gradient surface that holds every Pitch screen.
+ * The shared dark-gradient surface that holds every Coach Fabian screen.
  * Same gradient on home + chat creates a continuous environment as the user
  * navigates between them.
  */
