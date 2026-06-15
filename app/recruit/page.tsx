@@ -17,6 +17,7 @@ import {
 } from '@/lib/recruitProgress'
 import { getRecruitResults, summariseAnswers } from '@/lib/recruitResults'
 import { setLastUsed } from '@/lib/lastUsed'
+import { track } from '@/lib/analytics'
 
 /**
  * Unified Recruit Prep flow.
@@ -197,6 +198,15 @@ export default function RecruitFlowPage() {
       rawValue === 'true' || rawValue === 'false'
         ? rawValue === 'true'
         : (rawValue as QuizAnswers[keyof QuizAnswers])
+
+    // Compare against the *next* answer set so "finished" fires on the tap
+    // that actually completes the quiz, not on a subsequent edit.
+    const nextAnswers = { ...answers, [question.key]: decoded }
+    const wasComplete = isComplete(answers)
+    const nowComplete = isComplete(nextAnswers)
+    track('recruit_quiz_step_completed', { step: question.step })
+    if (!wasComplete && nowComplete) track('recruit_quiz_finished')
+
     setAnswer(question.key, decoded)
 
     setPendingAdvance(question.key)

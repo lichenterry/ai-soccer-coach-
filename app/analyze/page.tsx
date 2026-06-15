@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { extractFrames, validateVideoFile, getFileSizeWarning } from '@/lib/video'
 import { setLastUsed } from '@/lib/lastUsed'
+import { track } from '@/lib/analytics'
 import Stage from '@/components/Stage'
 import BrandMark from '@/components/BrandMark'
 import StepDots from '@/components/StepDots'
@@ -53,6 +54,7 @@ export default function AnalyzePage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    track('analyze_upload_started')
     setError(null)
     setWarning(null)
     setIsLongVideo(false)
@@ -76,6 +78,10 @@ export default function AnalyzePage() {
     video.onloadedmetadata = () => {
       if (video.duration > 60) setIsLongVideo(true)
       setClipDuration(Math.round(video.duration))
+      track('analyze_video_uploaded', {
+        file_size: file.size,
+        duration: Math.round(video.duration),
+      })
       URL.revokeObjectURL(video.src)
     }
     video.src = URL.createObjectURL(file)
@@ -121,6 +127,7 @@ export default function AnalyzePage() {
 
       setAnalysis(data.analysis)
       setStage('results')
+      track('analyze_results_viewed')
 
       if (voiceEnabled) {
         playAudio(data.analysis)
@@ -429,6 +436,7 @@ export default function AnalyzePage() {
                 onClick={() => {
                   const next = !voiceEnabled
                   setVoiceEnabled(next)
+                  track('voice_mode_toggled', { surface: 'analyze', enabled: next })
                   if (next && analysis) playAudio(analysis)
                 }}
                 aria-label={voiceEnabled ? 'Disable voice playback' : 'Play analysis aloud'}

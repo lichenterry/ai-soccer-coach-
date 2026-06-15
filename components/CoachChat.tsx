@@ -15,6 +15,7 @@ import MessageBubble from './MessageBubble'
 import VoiceButton, { VoiceButtonRef } from './VoiceButton'
 import { setLastUsed, type Feature } from '@/lib/lastUsed'
 import type { QuizAnswers } from '@/lib/recruitProgress'
+import { track } from '@/lib/analytics'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -187,6 +188,7 @@ export default function CoachChat({
     ]
     setMessages(newMessages)
     setIsLoading(true)
+    track('coach_message_sent', { mode })
 
     // Read the context fresh on every send rather than from a snapshot —
     // this way a parent who retakes the quiz in another tab (or via
@@ -291,7 +293,12 @@ export default function CoachChat({
               type="button"
               onClick={() => {
                 if (!voiceEnabled) setVoiceError(null)
-                setVoiceEnabled(!voiceEnabled)
+                const next = !voiceEnabled
+                setVoiceEnabled(next)
+                track('voice_mode_toggled', {
+                  surface: forcedMode === 'recruit' ? 'recruit' : 'coach',
+                  enabled: next,
+                })
               }}
               aria-label={voiceEnabled ? 'Disable voice mode' : 'Enable voice mode'}
               aria-pressed={voiceEnabled}
