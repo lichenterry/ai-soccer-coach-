@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import Stage from '@/components/Stage'
 import BrandMark from '@/components/BrandMark'
 import { getAllSlugs, getPost } from '@/lib/blog'
+import remarkBlogUtm from '@/lib/remarkBlogUtm'
 
 interface Params {
   params: { slug: string }
@@ -80,7 +81,7 @@ export default function BlogPostPage({ params }: Params) {
               prose-td:text-white/[0.82] prose-td:align-top
             "
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm, [remarkBlogUtm, { slug: post.slug }]]}>
               {post.content}
             </ReactMarkdown>
           </div>
